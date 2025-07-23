@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Water Quality Monitor</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f4f8;
+      text-align: center;
+      padding: 30px;
+    }
+    .card {
+      background: #ffffff;
+      padding: 20px;
+      margin: 0 auto;
+      max-width: 400px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { font-size: 1.5em; margin-bottom: 20px; }
+    p { font-size: 1.2em; margin: 10px 0; }
+    span { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🌊 Water Quality Dashboard</h1>
+    <p>🌡️ Temperature: <span id="temp">--</span> °C</p>
+    <p>💧 Turbidity: <span id="turb">--</span> NTU</p>
+    <p>🧪 pH Level: <span id="ph">--</span></p>
+    <p>⚙️ TDS: <span id="tds">--</span> ppm</p>
+  </div>
+
+  <script>
+    async function fetchData() {
+      try {
+        const response = await fetch("https://your-project-id-default-rtdb.firebaseio.com/sensor.json");
+        const data = await response.json();
+        document.getElementById("temp").textContent = data.temperature ?? '--';
+        document.getElementById("turb").textContent = data.turbidity ?? '--';
+        document.getElementById("ph").textContent = data.ph ?? '--';
+        document.getElementById("tds").textContent = data.tds ?? '--';
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    }
+
+    fetchData(); // initial fetch
+    setInterval(fetchData, 5000); // update every 5 seconds
+  </script>
+</body>
+</html>
