@@ -3,52 +3,220 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Water Quality Monitor</title>
+  <title>Wireless Water Quality Monitoring System</title>
+
+  <!-- Bootstrap & Firebase -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
-      font-family: sans-serif;
-      background: #f0f4f8;
-      text-align: center;
-      padding: 30px;
+      font-family: 'Segoe UI', sans-serif;
     }
-    .card {
-      background: #ffffff;
-      padding: 20px;
-      margin: 0 auto;
-      max-width: 400px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+      transition: top 0.4s;
     }
-    h1 { font-size: 1.5em; margin-bottom: 20px; }
-    p { font-size: 1.2em; margin: 10px 0; }
-    span { font-weight: bold; }
+
+    .sensor-card {
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+      padding: 1rem;
+    }
+
+    .content {
+      padding-top: 20px;
+    }
+
+    .chart-container {
+      margin-top: 40px;
+    }
+
+    canvas {
+      max-width: 100%;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>🌊 Water Quality Dashboard</h1>
-    <p>🌡️ Temperature: <span id="temp">--</span> °C</p>
-    <p>💧 Turbidity: <span id="turb">--</span> NTU</p>
-    <p>🧪 pH Level: <span id="ph">--</span></p>
-    <p>⚙️ TDS: <span id="tds">--</span> ppm</p>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light" id="mainNavbar">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Water Monitor</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="#readings">Readings</a></li>
+          <li class="nav-item"><a class="nav-link" href="#history">History</a></li>
+          <li class="nav-item"><a class="nav-link" href="#map">Maps</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <div class="container content">
+    <h2 class="text-center">Wireless Water Quality Monitoring System</h2>
+    <p class="text-center">
+      Uses IoT sensors to track pH, temperature, turbidity, and chlorine in real time. Data is sent to a cloud dashboard or app, enabling fast response to pollution and ensuring safe water for communities and the environment.
+    </p>
+
+    <h4 class="text-center mt-4" id="readings">Water Quality Parameters (Every 2 Hours)</h4>
+    <div class="row text-center">
+      <div class="col-md-6">
+        <div class="sensor-card bg-light">
+          <h5>Location 1</h5>
+          <p id="ph1">pH: --</p>
+          <p id="temp1">Temperature: --</p>
+          <p id="turb1">Turbidity: --</p>
+          <p id="tds1">TDS: --</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="sensor-card bg-light">
+          <h5>Location 2</h5>
+          <p id="ph2">pH: --</p>
+          <p id="temp2">Temperature: --</p>
+          <p id="turb2">Turbidity: --</p>
+          <p id="tds2">TDS: --</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-container" id="history">
+      <h4 class="text-center">pH Level History</h4>
+      <canvas id="phChart"></canvas>
+
+      <h4 class="text-center mt-5">Temperature History</h4>
+      <canvas id="tempChart"></canvas>
+
+      <h4 class="text-center mt-5">Turbidity History</h4>
+      <canvas id="turbChart"></canvas>
+
+      <h4 class="text-center mt-5">TDS History</h4>
+      <canvas id="tdsChart"></canvas>
+    </div>
   </div>
 
-  <script>
-    async function fetchData() {
-      try {
-        const response = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json");
-        const data = await response.json();
-        document.getElementById("temp").textContent = data.temperature ?? '--';
-        document.getElementById("turb").textContent = data.turbidity ?? '--';
-        document.getElementById("ph").textContent = data.ph ?? '--';
-        document.getElementById("tds").textContent = data.tds ?? '--';
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
+  <!-- Firebase + Charts -->
+<!-- Only include this part of the JS section -->
+<script>
+  const labels = ["12MN", "2AM", "4AM", "6AM", "8AM", "10AM", "12NN", "2PM", "4PM", "6PM", "8PM", "10PM"];
+
+  const chartConfig = (label, min, max, step) => ({
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: "Location 1", borderColor: 'red', fill: false, data: [] },
+        { label: "Location 2", borderColor: 'blue', fill: false, data: [] }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          min,
+          max,
+          ticks: { stepSize: step }
+        }
       }
     }
+  });
 
-    fetchData(); // initial fetch
-    setInterval(fetchData, 5000); // update every 5 seconds
+  const phChart = new Chart(document.getElementById('phChart'), chartConfig("pH", 0, 14, 1));
+  const tempChart = new Chart(document.getElementById('tempChart'), chartConfig("Temp", 15, 40, 5));
+  const turbChart = new Chart(document.getElementById('turbChart'), chartConfig("Turb", 0, 1000, 200));
+  const tdsChart = new Chart(document.getElementById('tdsChart'), chartConfig("TDS", 0, 1000000, 200000));
+
+  async function fetchData() {
+    try {
+      const response = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/.json");
+      const data = await response.json();
+
+      const timestamps = Object.keys(data || {}).sort();
+      const ph1 = [], ph2 = [], temp1 = [], temp2 = [], turb1 = [], turb2 = [], tds1 = [], tds2 = [];
+      let latest;
+
+      timestamps.forEach(ts => {
+        const u1 = data[ts]?.unit_1 || {}, u2 = data[ts]?.unit_2 || {};
+        ph1.push(u1.ph ?? null);
+        ph2.push(u2.ph ?? null);
+        temp1.push(u1.temperature ?? null);
+        temp2.push(u2.temperature ?? null);
+        turb1.push(u1.turbidity ?? null);
+        turb2.push(u2.turbidity ?? null);
+        tds1.push(u1.tds ?? null);
+        tds2.push(u2.tds ?? null);
+        latest = { u1, u2 };
+      });
+
+      if (latest) {
+        document.getElementById("ph1").textContent = `pH: ${latest.u1.ph}`;
+        document.getElementById("ph2").textContent = `pH: ${latest.u2.ph}`;
+        document.getElementById("temp1").textContent = `Temperature: ${latest.u1.temperature}°C`;
+        document.getElementById("temp2").textContent = `Temperature: ${latest.u2.temperature}°C`;
+        document.getElementById("turb1").textContent = `Turbidity: ${latest.u1.turbidity} NTU`;
+        document.getElementById("turb2").textContent = `Turbidity: ${latest.u2.turbidity} NTU`;
+        document.getElementById("tds1").textContent = `TDS: ${latest.u1.tds} ppm`;
+        document.getElementById("tds2").textContent = `TDS: ${latest.u2.tds} ppm`;
+      }
+
+      phChart.data.datasets[0].data = ph1;
+      phChart.data.datasets[1].data = ph2;
+      phChart.update();
+
+      tempChart.data.datasets[0].data = temp1;
+      tempChart.data.datasets[1].data = temp2;
+      tempChart.update();
+
+      turbChart.data.datasets[0].data = turb1;
+      turbChart.data.datasets[1].data = turb2;
+      turbChart.update();
+
+      tdsChart.data.datasets[0].data = tds1;
+      tdsChart.data.datasets[1].data = tds2;
+      tdsChart.update();
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  }
+
+  setInterval(fetchData, 5000);
+  fetchData();
+</script>
+
+  <!-- Hide navbar and collapse on scroll -->
+  <script>
+    let prevScrollPos = window.pageYOffset;
+    const navbar = document.getElementById("mainNavbar");
+    const navbarCollapse = document.getElementById("navbarNav");
+
+    window.addEventListener("scroll", () => {
+      let currentScrollPos = window.pageYOffset;
+
+      if (prevScrollPos > currentScrollPos) {
+        navbar.style.top = "0";
+      } else {
+        navbar.style.top = "-80px";
+
+        const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+        if (bsCollapse && navbarCollapse.classList.contains("show")) {
+          bsCollapse.hide();
+        }
+      }
+
+      prevScrollPos = currentScrollPos;
+    });
   </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
