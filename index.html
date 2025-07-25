@@ -151,11 +151,10 @@ const chartConfig = (label, min, max, step) => ({
   const tdsChart = new Chart(document.getElementById('tdsChart'), chartConfig("TDS", 0, 1000000, 200000));
 
 function formatTimestamp(ts) {
-  // Assumes ts is like "2025-07-24 14:00:00"
-  const [datePart, timePart] = ts.split(" ");
-  const [hour, minute] = timePart.split(":");
-  return `${datePart} ${hour}:${minute}`;
+  // Assumes ts is like "2025-07-25_20-56"
+  return ts.replace("_", " ").replace("-", ":");
 }
+
 
 
   async function fetchData() {
