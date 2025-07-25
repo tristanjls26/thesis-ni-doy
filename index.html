@@ -135,59 +135,73 @@
   const turbChart = new Chart(document.getElementById('turbChart'), chartConfig("Turb", 0, 1000, 200));
   const tdsChart = new Chart(document.getElementById('tdsChart'), chartConfig("TDS", 0, 1000000, 200000));
 
-  async function fetchData() {
-    try {
-      const response = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/.json");
-      const data = await response.json();
+async function fetchData() {
+  try {
+    const response1 = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/unit_1.json");
+    const response2 = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/unit_2.json");
 
-      const timestamps = Object.keys(data || {}).sort();
-      const ph1 = [], ph2 = [], temp1 = [], temp2 = [], turb1 = [], turb2 = [], tds1 = [], tds2 = [];
-      let latest;
+    const unit1Data = await response1.json();
+    const unit2Data = await response2.json();
 
-      timestamps.forEach(ts => {
-        const u1 = data[ts]?.unit_1 || {}, u2 = data[ts]?.unit_2 || {};
-        ph1.push(u1.ph ?? null);
-        ph2.push(u2.ph ?? null);
-        temp1.push(u1.temperature ?? null);
-        temp2.push(u2.temperature ?? null);
-        turb1.push(u1.turbidity ?? null);
-        turb2.push(u2.turbidity ?? null);
-        tds1.push(u1.tds ?? null);
-        tds2.push(u2.tds ?? null);
-        latest = { u1, u2 };
-      });
+    const timestamps = Object.keys(unit1Data || {}).sort(); // Assuming both units use same timestamps
 
-      if (latest) {
-        document.getElementById("ph1").textContent = `pH: ${latest.u1.ph}`;
-        document.getElementById("ph2").textContent = `pH: ${latest.u2.ph}`;
-        document.getElementById("temp1").textContent = `Temperature: ${latest.u1.temperature}°C`;
-        document.getElementById("temp2").textContent = `Temperature: ${latest.u2.temperature}°C`;
-        document.getElementById("turb1").textContent = `Turbidity: ${latest.u1.turbidity} NTU`;
-        document.getElementById("turb2").textContent = `Turbidity: ${latest.u2.turbidity} NTU`;
-        document.getElementById("tds1").textContent = `TDS: ${latest.u1.tds} ppm`;
-        document.getElementById("tds2").textContent = `TDS: ${latest.u2.tds} ppm`;
-      }
+    const ph1 = [], ph2 = [], temp1 = [], temp2 = [], turb1 = [], turb2 = [], tds1 = [], tds2 = [];
 
-      phChart.data.datasets[0].data = ph1;
-      phChart.data.datasets[1].data = ph2;
-      phChart.update();
+    let latest;
 
-      tempChart.data.datasets[0].data = temp1;
-      tempChart.data.datasets[1].data = temp2;
-      tempChart.update();
+    timestamps.forEach(ts => {
+      const u1 = unit1Data[ts] || {};
+      const u2 = unit2Data[ts] || {};
 
-      turbChart.data.datasets[0].data = turb1;
-      turbChart.data.datasets[1].data = turb2;
-      turbChart.update();
+      ph1.push(u1.ph_1 ?? null);
+      ph2.push(u2.ph_2 ?? null);
 
-      tdsChart.data.datasets[0].data = tds1;
-      tdsChart.data.datasets[1].data = tds2;
-      tdsChart.update();
+      temp1.push(u1.temperature_1 ?? null);
+      temp2.push(u2.temperature_2 ?? null);
 
-    } catch (error) {
-      console.error("Error fetching data:", error);
+      turb1.push(u1.turbidity_1 ?? null);
+      turb2.push(u2.turbidity_2 ?? null);
+
+      tds1.push(u1.tds_1 ?? null);
+      tds2.push(u2.tds_2 ?? null);
+
+      latest = { u1, u2 };
+    });
+
+    if (latest) {
+      document.getElementById("ph1").textContent = `pH: ${latest.u1.ph_1}`;
+      document.getElementById("ph2").textContent = `pH: ${latest.u2.ph_2}`;
+
+      document.getElementById("temp1").textContent = `Temperature: ${latest.u1.temperature_1}°C`;
+      document.getElementById("temp2").textContent = `Temperature: ${latest.u2.temperature_2}°C`;
+
+      document.getElementById("turb1").textContent = `Turbidity: ${latest.u1.turbidity_1} NTU`;
+      document.getElementById("turb2").textContent = `Turbidity: ${latest.u2.turbidity_2} NTU`;
+
+      document.getElementById("tds1").textContent = `TDS: ${latest.u1.tds_1} ppm`;
+      document.getElementById("tds2").textContent = `TDS: ${latest.u2.tds_2} ppm`;
     }
+
+    phChart.data.datasets[0].data = ph1;
+    phChart.data.datasets[1].data = ph2;
+    phChart.update();
+
+    tempChart.data.datasets[0].data = temp1;
+    tempChart.data.datasets[1].data = temp2;
+    tempChart.update();
+
+    turbChart.data.datasets[0].data = turb1;
+    turbChart.data.datasets[1].data = turb2;
+    turbChart.update();
+
+    tdsChart.data.datasets[0].data = tds1;
+    tdsChart.data.datasets[1].data = tds2;
+    tdsChart.update();
+
+  } catch (error) {
+    console.error("Error fetching data:", error);
   }
+}
 
   setInterval(fetchData, 5000);
   fetchData();
