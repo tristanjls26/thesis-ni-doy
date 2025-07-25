@@ -107,101 +107,136 @@
   <!-- Firebase + Charts -->
 <!-- Only include this part of the JS section -->
 <script>
-  const labels = ["12MN", "2AM", "4AM", "6AM", "8AM", "10AM", "12NN", "2PM", "4PM", "6PM", "8PM", "10PM"];
 
-  const chartConfig = (label, min, max, step) => ({
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: "Location 1", borderColor: 'red', fill: false, data: [] },
-        { label: "Location 2", borderColor: 'blue', fill: false, data: [] }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          min,
-          max,
-          ticks: { stepSize: step }
+const chartConfig = (label, min, max, step) => ({
+  type: 'line',
+  data: {
+    labels: [], // <-- dynamic from timeLabels later
+    datasets: [
+      { label: "Location 1", borderColor: 'red', fill: false, data: [] },
+      { label: "Location 2", borderColor: 'blue', fill: false, data: [] }
+    ]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y: {
+        min,
+        max,
+        ticks: { stepSize: step }
+      },
+      x: {
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45
         }
       }
+    },
+    plugins: {
+      title: {
+        display: true,
+        text: label + " vs Time"
+      },
+      legend: {
+        display: true
+      }
     }
-  });
+  }
+});
+
 
   const phChart = new Chart(document.getElementById('phChart'), chartConfig("pH", 0, 14, 1));
   const tempChart = new Chart(document.getElementById('tempChart'), chartConfig("Temp", 15, 40, 5));
-  const turbChart = new Chart(document.getElementById('turbChart'), chartConfig("Turb", 0, 1000, 200));
+  const turbChart = new Chart(document.getElementById('turbChart'), chartConfig("Turb", 0, 2000, 400));
   const tdsChart = new Chart(document.getElementById('tdsChart'), chartConfig("TDS", 0, 1000000, 200000));
 
-async function fetchData() {
-  try {
-    const response1 = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/unit_1.json");
-    const response2 = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/unit_2.json");
-
-    const unit1Data = await response1.json();
-    const unit2Data = await response2.json();
-
-    const timestamps = Object.keys(unit1Data || {}).sort(); // Assuming both units use same timestamps
-
-    const ph1 = [], ph2 = [], temp1 = [], temp2 = [], turb1 = [], turb2 = [], tds1 = [], tds2 = [];
-
-    let latest;
-
-    timestamps.forEach(ts => {
-      const u1 = unit1Data[ts] || {};
-      const u2 = unit2Data[ts] || {};
-
-      ph1.push(u1.ph_1 ?? null);
-      ph2.push(u2.ph_2 ?? null);
-
-      temp1.push(u1.temperature_1 ?? null);
-      temp2.push(u2.temperature_2 ?? null);
-
-      turb1.push(u1.turbidity_1 ?? null);
-      turb2.push(u2.turbidity_2 ?? null);
-
-      tds1.push(u1.tds_1 ?? null);
-      tds2.push(u2.tds_2 ?? null);
-
-      latest = { u1, u2 };
-    });
-
-    if (latest) {
-      document.getElementById("ph1").textContent = `pH: ${latest.u1.ph_1}`;
-      document.getElementById("ph2").textContent = `pH: ${latest.u2.ph_2}`;
-
-      document.getElementById("temp1").textContent = `Temperature: ${latest.u1.temperature_1}°C`;
-      document.getElementById("temp2").textContent = `Temperature: ${latest.u2.temperature_2}°C`;
-
-      document.getElementById("turb1").textContent = `Turbidity: ${latest.u1.turbidity_1} NTU`;
-      document.getElementById("turb2").textContent = `Turbidity: ${latest.u2.turbidity_2} NTU`;
-
-      document.getElementById("tds1").textContent = `TDS: ${latest.u1.tds_1} ppm`;
-      document.getElementById("tds2").textContent = `TDS: ${latest.u2.tds_2} ppm`;
-    }
-
-    phChart.data.datasets[0].data = ph1;
-    phChart.data.datasets[1].data = ph2;
-    phChart.update();
-
-    tempChart.data.datasets[0].data = temp1;
-    tempChart.data.datasets[1].data = temp2;
-    tempChart.update();
-
-    turbChart.data.datasets[0].data = turb1;
-    turbChart.data.datasets[1].data = turb2;
-    turbChart.update();
-
-    tdsChart.data.datasets[0].data = tds1;
-    tdsChart.data.datasets[1].data = tds2;
-    tdsChart.update();
-
-  } catch (error) {
-    console.error("Error fetching data:", error);
-  }
+function formatTimestamp(ts) {
+  // Assumes ts is like "2025-07-24 14:00:00"
+  const [datePart, timePart] = ts.split(" ");
+  const [hour, minute] = timePart.split(":");
+  return `${datePart} ${hour}:${minute}`;
 }
+
+
+  async function fetchData() {
+    try {
+      const response1 = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/unit_1.json");
+      const response2 = await fetch("https://watermonitoringsystem-d3e93-default-rtdb.asia-southeast1.firebasedatabase.app/unit_2.json");
+
+      const unit1Data = await response1.json();
+      const unit2Data = await response2.json();
+
+      const maxPoints = 24; // e.g., last 24 readings
+      const timestamps = Object.keys(unit1Data || {}).sort().slice(-maxPoints);
+
+      const timeLabels = [];
+      const ph1 = [], ph2 = [], temp1 = [], temp2 = [], turb1 = [], turb2 = [], tds1 = [], tds2 = [];
+
+      let latest;
+
+      timestamps.forEach(ts => {
+        timeLabels.push(formatTimestamp(ts));
+
+        const u1 = unit1Data[ts] || {};
+        const u2 = unit2Data[ts] || {};
+
+        ph1.push(u1.ph_1 ?? null);
+        ph2.push(u2.ph_2 ?? null);
+
+        temp1.push(u1.temperature_1 ?? null);
+        temp2.push(u2.temperature_2 ?? null);
+
+        turb1.push(u1.turbidity_1 ?? null);
+        turb2.push(u2.turbidity_2 ?? null);
+
+        tds1.push(u1.tds_1 ?? null);
+        tds2.push(u2.tds_2 ?? null);
+
+        latest = { u1, u2 };
+      });
+
+      // Update X-axis labels with bucketed times
+      phChart.data.labels = timeLabels;
+      tempChart.data.labels = timeLabels;
+      turbChart.data.labels = timeLabels;
+      tdsChart.data.labels = timeLabels;
+
+      // Update datasets
+      phChart.data.datasets[0].data = ph1;
+      phChart.data.datasets[1].data = ph2;
+      phChart.update();
+
+      tempChart.data.datasets[0].data = temp1;
+      tempChart.data.datasets[1].data = temp2;
+      tempChart.update();
+
+      turbChart.data.datasets[0].data = turb1;
+      turbChart.data.datasets[1].data = turb2;
+      turbChart.update();
+
+      tdsChart.data.datasets[0].data = tds1;
+      tdsChart.data.datasets[1].data = tds2;
+      tdsChart.update();
+
+      // Also update latest values on cards
+      if (latest) {
+        document.getElementById("ph1").textContent = `pH: ${latest.u1.ph_1}`;
+        document.getElementById("ph2").textContent = `pH: ${latest.u2.ph_2}`;
+
+        document.getElementById("temp1").textContent = `Temperature: ${latest.u1.temperature_1}°C`;
+        document.getElementById("temp2").textContent = `Temperature: ${latest.u2.temperature_2}°C`;
+
+        document.getElementById("turb1").textContent = `Turbidity: ${latest.u1.turbidity_1} NTU`;
+        document.getElementById("turb2").textContent = `Turbidity: ${latest.u2.turbidity_2} NTU`;
+
+        document.getElementById("tds1").textContent = `TDS: ${latest.u1.tds_1} ppm`;
+        document.getElementById("tds2").textContent = `TDS: ${latest.u2.tds_2} ppm`;
+      }
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  }
 
   setInterval(fetchData, 5000);
   fetchData();
